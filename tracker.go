@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"     //for printing
+	"fmt" //for printing
+	"os"
 	"strings" //String conversion library
 	"time"    //for time
 
@@ -43,7 +44,13 @@ func main() {
 
 	//check if all the variables exist in the .env, if not panic and send an error message
 	if githubPassword == "" || githubUsername == "" || dsn == "" {
-		panic("Missing .env variables!")
+		//try getting from os as well (if in production)
+		githubPassword = os.Getenv("GITHUB_PASSWORD")
+		githubUsername = os.Getenv("GITHUB_USERNAME")
+		dsn = os.Getenv("DATABASE_URL")
+		if githubPassword == "" || githubUsername == "" || dsn == "" {
+			panic("Missing .env variables!")
+		}
 	}
 
 	//infinite loop of calls and authentication to github and db
