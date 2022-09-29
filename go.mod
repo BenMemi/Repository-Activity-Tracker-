@@ -4,6 +4,8 @@ go 1.19
 
 require gorm.io/driver/postgres v1.3.10
 
+ 
+
 require (
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-github/v47 v47.1.0 // indirect
