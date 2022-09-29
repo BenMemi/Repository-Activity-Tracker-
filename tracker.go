@@ -2,71 +2,88 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strings"
-	"time"
+	"fmt"     //for printing
+	"strings" //String conversion library
+	"time"    //for time
 
-	database "tracker/database"
+	database "tracker/database" //our local db module for dealing with our db, mainly schema in there
 
-	//Import googles golang github API
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/github" //Import googles golang github API
+
+	"github.com/profclems/go-dotenv" //Import dotenv library to deal with env variables before CICD is needed
 
 	//Import GORM (go ORM) to interact with the database
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	//
 )
 
-const (
-//TODO: ENV Variables
-//Need username and PAT (personal access token) to access github API for traffic API
-
-//Repositories
-
-// Database connection String
-)
-
+// Globaly used variables
 var (
+	//github username
 	githubUsername = ""
+	//github PAT (personal access token)
 	githubPassword = ""
-	dsn            = ""
+	//database connection string
+	dsn = ""
 )
 
 func main() {
-	githubUsername = os.Getenv("GITHUB_USERNAME")
-	githubPassword = os.Getenv("GITHUB_PASSWORD")
-	dsn = os.Getenv("DATABASE_URL")
+	//Load the .evn
+	err := dotenv.LoadConfig()
+	if err != nil {
+		//panic if we cannot load the .env
+		panic(err)
+	}
 
+	//grab the .env variables, careful this will silently fail!
+	githubPassword = dotenv.GetString("GITHUB_PASSWORD")
+	githubUsername = dotenv.GetString("GITHUB_USERNAME")
+	dsn = dotenv.GetString("DATABASE_URL")
+
+	//check if all the variables exist in the .env, if not panic and send an error message
+	if githubPassword == "" || githubUsername == "" || dsn == "" {
+		panic("Missing .env variables!")
+	}
+
+	//infinite loop of calls and authentication to github and db
 	for {
-		//Need a background context
+		//Need a background context, just standard stuff
 		ctx := context.Background()
 
-		//Create a new github client with authentication
+		//Create a new github http client that is authenticated with our PAT
 		tp := github.BasicAuthTransport{
 			Username: strings.TrimSpace(githubUsername),
 			Password: strings.TrimSpace(githubPassword),
 		}
+		//this is the client object
 		client := github.NewClient(tp.Client())
 
+		//start a connection to the database with out connection string
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		//panic if we cannot connect to the database
 		if err != nil {
 			panic("failed to connect database")
 		} else {
+			//or else we are good to go
 			fmt.Println("Connected to database")
 			fmt.Println(db)
 		}
 
+		//Migrate schemas to the database (make/edit tables)
+		//TODO: this should go through an array, not hard coded
 		db.AutoMigrate(&database.Clone{})
 		db.AutoMigrate(&database.View{})
 		db.AutoMigrate(&database.Path{})
 		db.AutoMigrate(&database.Referral{})
 
-		//Get the traffic data for the repository
+		//Get the traffic data for the repository with an API request
 		trafficClones, _, err := client.Repositories.ListTrafficClones(ctx, "balancer-labs", "balancer-v2-monorepo", &github.TrafficBreakdownOptions{})
 		fmt.Println("TRAFFIC CLONES")
 		fmt.Println("///////////////////////////////////////")
+
+		//TODO should be a function not copy pasting code
+		//Loop through all the days where clones happened and add them to the database and print them out
 		for _, clone := range trafficClones.Clones {
 			fmt.Println("timestamp: ", clone.Timestamp)
 			fmt.Println("count: ", *clone.Count)
@@ -82,9 +99,11 @@ func main() {
 		}
 		fmt.Println("///////////////////////////////////////")
 
+		//Get the traffic data for the repository with an API request
 		trafficViewers, _, err := client.Repositories.ListTrafficViews(ctx, "balancer-labs", "balancer-v2-monorepo", &github.TrafficBreakdownOptions{})
 		fmt.Println("TRAFFIC VIEWS")
 		fmt.Println("///////////////////////////////////////")
+		//Loop through all the days where views happened and add them to the database and print them out
 		for _, viewer := range trafficViewers.Views {
 			fmt.Println("timestamp: ", viewer.Timestamp)
 			fmt.Println("count: ", *viewer.Count)
@@ -100,8 +119,7 @@ func main() {
 		}
 		fmt.Println("///////////////////////////////////////")
 
-		//fmt.Println(response)
-
+		//Get the traffic data for the repository with an API request
 		trafficPaths, _, err := client.Repositories.ListTrafficPaths(ctx, "balancer-labs", "balancer-v2-monorepo")
 		fmt.Println("TRAFFIC PATHS")
 		fmt.Println("///////////////////////////////////////")
@@ -110,12 +128,14 @@ func main() {
 			fmt.Println("title: ", *path.Title)
 			fmt.Println("count: ", *path.Count)
 			fmt.Println("uniques: ", *path.Uniques)
+
+			//Loop through all the days where paths happened and add them to the database and print them out
 			path := database.Path{
 				Path:    *path.Path,
 				Title:   *path.Title,
 				Count:   *path.Count,
 				Uniques: *path.Uniques,
-				Day:     time.Now().Truncate(24 * time.Hour),
+				Day:     time.Now().Truncate(24 * time.Hour), //Gets the day of the path was retrieved
 			}
 			db.Clauses(clause.OnConflict{
 				UpdateAll: true,
@@ -123,6 +143,7 @@ func main() {
 		}
 		fmt.Println("///////////////////////////////////////")
 
+		//same as above but with referrals
 		trafficReferrals, _, err := client.Repositories.ListTrafficReferrers(ctx, "balancer-labs", "balancer-v2-monorepo")
 		fmt.Println("TRAFFIC REFERRALS")
 		fmt.Println("///////////////////////////////////////")
@@ -143,7 +164,7 @@ func main() {
 
 		fmt.Println("///////////////////////////////////////")
 
-		fmt.Println(err)
+		//sleep for 24 hours and then do it again
 		time.Sleep(24 * time.Hour)
 	}
 }

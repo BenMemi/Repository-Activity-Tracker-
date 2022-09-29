@@ -23,6 +23,8 @@ resource "google_compute_instance" "vm_instance" {
     access_config {
     }
   }
+
+  metadata_startup_script = "${file("install_docker.sh")}"
 }
 
 resource "google_compute_network" "vpc_tr_network" {
