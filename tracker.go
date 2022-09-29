@@ -34,7 +34,7 @@ func main() {
 	err := dotenv.LoadConfig()
 	if err != nil {
 		//panic if we cannot load the .env
-		panic(err)
+		fmt.Println("error loading .env file")
 	}
 
 	//grab the .env variables, careful this will silently fail!
