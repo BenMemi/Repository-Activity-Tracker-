@@ -1,2 +1,5 @@
 *.json
 *.env
+*.env2
+terraform/start_script.sh
+terraform/start_script.sh

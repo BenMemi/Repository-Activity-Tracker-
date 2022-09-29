@@ -1,7 +1,7 @@
 
 
 provider "google" {
-  credentials = file("/Users/memi/Repository-Activity-Tracker-/first-vigil-296706-f83f2a2f26d0.json")
+credentials = file("/Users/memi/Repository-Activity-Tracker-/first-vigil-296706-f83f2a2f26d0.json") //swap to your service Key!!!
 
   project = "first-vigil-296706"
   region  = "us-central1"
@@ -9,7 +9,7 @@ provider "google" {
 }
 
 resource "google_compute_instance" "vm_instance" {
-  name                      = "balancer_github_tracker"
+  name                      = "balancer-github-tracker"
   machine_type              = "e2-micro"
   allow_stopping_for_update = false
   boot_disk {
@@ -19,27 +19,14 @@ resource "google_compute_instance" "vm_instance" {
   }
 
   network_interface {
-    network = google_compute_network.vpc_tr_network.self_link
+    network = "default"
+
     access_config {
+      // Ephemeral public IP
     }
   }
-
-  metadata_startup_script = "${file("install_docker.sh")}"
+  metadata_startup_script = "${file("start_script.sh")}"
 }
 
-resource "google_compute_network" "vpc_tr_network" {
-  name                    = "github-tracker-network"
-  auto_create_subnetworks = false
-}
 
-resource "google_compute_firewall" "ssh-rule" {
-  name    = "ssh-github-tracker"
-  network = google_compute_network.vpc_tr_network.self_link
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-  source_ranges = ["0.0.0.0/0"]
-
-}
 
