@@ -96,9 +96,10 @@ func main() {
 			fmt.Println("count: ", *clone.Count)
 			fmt.Println("uniques: ", *clone.Uniques)
 			clone := database.Clone{
-				Day:     clone.Timestamp.Time,
-				Count:   *clone.Count,
-				Uniques: *clone.Uniques,
+				Day:        clone.Timestamp.Time,
+				Count:      *clone.Count,
+				Uniques:    *clone.Uniques,
+				Repository: "balancer-v2-monorepo",
 			}
 			db.Clauses(clause.OnConflict{
 				UpdateAll: true,
@@ -116,9 +117,10 @@ func main() {
 			fmt.Println("count: ", *viewer.Count)
 			fmt.Println("uniques: ", *viewer.Uniques)
 			viewer := database.View{
-				Day:     viewer.Timestamp.Time,
-				Count:   *viewer.Count,
-				Uniques: *viewer.Uniques,
+				Day:        viewer.Timestamp.Time,
+				Count:      *viewer.Count,
+				Uniques:    *viewer.Uniques,
+				Repository: "balancer-v2-monorepo",
 			}
 			db.Clauses(clause.OnConflict{
 				UpdateAll: true,
@@ -138,11 +140,12 @@ func main() {
 
 			//Loop through all the days where paths happened and add them to the database and print them out
 			path := database.Path{
-				Path:    *path.Path,
-				Title:   *path.Title,
-				Count:   *path.Count,
-				Uniques: *path.Uniques,
-				Day:     time.Now().Truncate(24 * time.Hour), //Gets the day of the path was retrieved
+				Path:       *path.Path,
+				Title:      *path.Title,
+				Count:      *path.Count,
+				Uniques:    *path.Uniques,
+				Day:        time.Now().Truncate(24 * time.Hour), //Gets the day of the path was retrieved
+				Repository: "balancer-v2-monorepo",
 			}
 			db.Clauses(clause.OnConflict{
 				UpdateAll: true,
@@ -159,10 +162,11 @@ func main() {
 			fmt.Println("count: ", *referral.Count)
 			fmt.Println("Unique: ", *referral.Uniques)
 			referral := database.Referral{
-				Referrer: *referral.Referrer,
-				Count:    *referral.Count,
-				Uniques:  *referral.Uniques,
-				Day:      time.Now().Truncate(24 * time.Hour),
+				Referrer:   *referral.Referrer,
+				Count:      *referral.Count,
+				Uniques:    *referral.Uniques,
+				Day:        time.Now().Truncate(24 * time.Hour),
+				Repository: "balancer-v2-monorepo",
 			}
 			db.Clauses(clause.OnConflict{
 				UpdateAll: true,
