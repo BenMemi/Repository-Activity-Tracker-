@@ -19,8 +19,9 @@ The reason of this is is to copy the lines 6 to 8 from the file and make a start
 
 # Steps 
 0. Make GCP service account and get the key file and put the path to the key file in terraform/main.tf (line is marked)
-1. Make .env as detailed above 
-2. Run up.sh 
-3. cd terraform
-4. Run terraform init
-5. Run terraform apply
+1. Add in your repos to the tracker.go file in the marked spot 
+2. Make .env as detailed above 
+3. Run up.sh 
+4. cd terraform
+5. Run terraform init
+6. Run terraform apply

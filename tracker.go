@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt" //for printing
+	"log"
 	"os"
 	"strings" //String conversion library
 	"time"    //for time
@@ -19,6 +20,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type Repository struct {
+	//Repository struct to hold the repository name and the owner of the repo
+	//TODO: Expand this to include additional PATs maybe?
+	Owner string
+	Repo  string
+}
+
 // Globaly used variables
 var (
 	//github username
@@ -27,9 +35,20 @@ var (
 	githubPassword = ""
 	//database connection string
 	dsn = ""
+
+	//Github Repository List
+	//ADD YOUR REPOS HERE <--------------
+	repositories = []Repository{
+		{
+			Owner: "balancer-labs",
+			Repo:  "balancer-v2-monorepo",
+		},
+	}
 )
 
 func main() {
+	//load repos
+
 	//Load the .evn
 	err := dotenv.LoadConfig()
 	if err != nil {
@@ -84,97 +103,111 @@ func main() {
 		db.AutoMigrate(&database.Path{})
 		db.AutoMigrate(&database.Referral{})
 
-		//Get the traffic data for the repository with an API request
-		trafficClones, _, err := client.Repositories.ListTrafficClones(ctx, "balancer-labs", "balancer-v2-monorepo", &github.TrafficBreakdownOptions{})
-		fmt.Println("TRAFFIC CLONES")
-		fmt.Println("///////////////////////////////////////")
+		for _, repo := range repositories {
+			//Get the traffic data for the repository with an API request
+			trafficClones, _, err := client.Repositories.ListTrafficClones(ctx, repo.Owner, repo.Repo, &github.TrafficBreakdownOptions{})
+			fmt.Println("TRAFFIC CLONES")
+			fmt.Println("///////////////////////////////////////")
 
-		//TODO should be a function not copy pasting code
-		//Loop through all the days where clones happened and add them to the database and print them out
-		for _, clone := range trafficClones.Clones {
-			fmt.Println("timestamp: ", clone.Timestamp)
-			fmt.Println("count: ", *clone.Count)
-			fmt.Println("uniques: ", *clone.Uniques)
-			clone := database.Clone{
-				Day:        clone.Timestamp.Time,
-				Count:      *clone.Count,
-				Uniques:    *clone.Uniques,
-				Repository: "balancer-v2-monorepo",
+			if err != nil {
+				log.Fatalln("could not make the API request", err)
 			}
-			db.Clauses(clause.OnConflict{
-				UpdateAll: true,
-			}).Create(&clone)
-		}
-		fmt.Println("///////////////////////////////////////")
 
-		//Get the traffic data for the repository with an API request
-		trafficViewers, _, err := client.Repositories.ListTrafficViews(ctx, "balancer-labs", "balancer-v2-monorepo", &github.TrafficBreakdownOptions{})
-		fmt.Println("TRAFFIC VIEWS")
-		fmt.Println("///////////////////////////////////////")
-		//Loop through all the days where views happened and add them to the database and print them out
-		for _, viewer := range trafficViewers.Views {
-			fmt.Println("timestamp: ", viewer.Timestamp)
-			fmt.Println("count: ", *viewer.Count)
-			fmt.Println("uniques: ", *viewer.Uniques)
-			viewer := database.View{
-				Day:        viewer.Timestamp.Time,
-				Count:      *viewer.Count,
-				Uniques:    *viewer.Uniques,
-				Repository: "balancer-v2-monorepo",
+			//TODO should be a function not copy pasting code
+			//Loop through all the days where clones happened and add them to the database and print them out
+			for _, clone := range trafficClones.Clones {
+				fmt.Println("timestamp: ", clone.Timestamp)
+				fmt.Println("count: ", *clone.Count)
+				fmt.Println("uniques: ", *clone.Uniques)
+				clone := database.Clone{
+					Day:        clone.Timestamp.Time,
+					Count:      *clone.Count,
+					Uniques:    *clone.Uniques,
+					Repository: repo.Repo,
+				}
+				db.Clauses(clause.OnConflict{
+					UpdateAll: true,
+				}).Create(&clone)
 			}
-			db.Clauses(clause.OnConflict{
-				UpdateAll: true,
-			}).Create(&viewer)
-		}
-		fmt.Println("///////////////////////////////////////")
+			fmt.Println("///////////////////////////////////////")
 
-		//Get the traffic data for the repository with an API request
-		trafficPaths, _, err := client.Repositories.ListTrafficPaths(ctx, "balancer-labs", "balancer-v2-monorepo")
-		fmt.Println("TRAFFIC PATHS")
-		fmt.Println("///////////////////////////////////////")
-		for _, path := range trafficPaths {
-			fmt.Println("path: ", *path.Path)
-			fmt.Println("title: ", *path.Title)
-			fmt.Println("count: ", *path.Count)
-			fmt.Println("uniques: ", *path.Uniques)
-
-			//Loop through all the days where paths happened and add them to the database and print them out
-			path := database.Path{
-				Path:       *path.Path,
-				Title:      *path.Title,
-				Count:      *path.Count,
-				Uniques:    *path.Uniques,
-				Day:        time.Now().Truncate(24 * time.Hour), //Gets the day of the path was retrieved
-				Repository: "balancer-v2-monorepo",
+			//Get the traffic data for the repository with an API request
+			trafficViewers, _, err := client.Repositories.ListTrafficViews(ctx, repo.Owner, repo.Repo, &github.TrafficBreakdownOptions{})
+			fmt.Println("TRAFFIC VIEWS")
+			fmt.Println("///////////////////////////////////////")
+			if err != nil {
+				log.Fatalln("could not make the API request", err)
 			}
-			db.Clauses(clause.OnConflict{
-				UpdateAll: true,
-			}).Create(&path)
-		}
-		fmt.Println("///////////////////////////////////////")
-
-		//same as above but with referrals
-		trafficReferrals, _, err := client.Repositories.ListTrafficReferrers(ctx, "balancer-labs", "balancer-v2-monorepo")
-		fmt.Println("TRAFFIC REFERRALS")
-		fmt.Println("///////////////////////////////////////")
-		for _, referral := range trafficReferrals {
-			fmt.Println("Referrer: ", *referral.Referrer)
-			fmt.Println("count: ", *referral.Count)
-			fmt.Println("Unique: ", *referral.Uniques)
-			referral := database.Referral{
-				Referrer:   *referral.Referrer,
-				Count:      *referral.Count,
-				Uniques:    *referral.Uniques,
-				Day:        time.Now().Truncate(24 * time.Hour),
-				Repository: "balancer-v2-monorepo",
+			//Loop through all the days where views happened and add them to the database and print them out
+			for _, viewer := range trafficViewers.Views {
+				fmt.Println("timestamp: ", viewer.Timestamp)
+				fmt.Println("count: ", *viewer.Count)
+				fmt.Println("uniques: ", *viewer.Uniques)
+				viewer := database.View{
+					Day:        viewer.Timestamp.Time,
+					Count:      *viewer.Count,
+					Uniques:    *viewer.Uniques,
+					Repository: repo.Repo,
+				}
+				db.Clauses(clause.OnConflict{
+					UpdateAll: true,
+				}).Create(&viewer)
 			}
-			db.Clauses(clause.OnConflict{
-				UpdateAll: true,
-			}).Create(&referral)
+			fmt.Println("///////////////////////////////////////")
+
+			//Get the traffic data for the repository with an API request
+			trafficPaths, _, err := client.Repositories.ListTrafficPaths(ctx, repo.Owner, repo.Repo)
+			if err != nil {
+				log.Fatalln("could not make the API request", err)
+			}
+			fmt.Println("TRAFFIC PATHS")
+			fmt.Println("///////////////////////////////////////")
+			for _, path := range trafficPaths {
+				fmt.Println("path: ", *path.Path)
+				fmt.Println("title: ", *path.Title)
+				fmt.Println("count: ", *path.Count)
+				fmt.Println("uniques: ", *path.Uniques)
+
+				//Loop through all the days where paths happened and add them to the database and print them out
+				path := database.Path{
+					Path:       *path.Path,
+					Title:      *path.Title,
+					Count:      *path.Count,
+					Uniques:    *path.Uniques,
+					Day:        time.Now().Truncate(24 * time.Hour), //Gets the day of the path was retrieved
+					Repository: repo.Repo,
+				}
+				db.Clauses(clause.OnConflict{
+					UpdateAll: true,
+				}).Create(&path)
+			}
+			fmt.Println("///////////////////////////////////////")
+
+			//same as above but with referrals
+			trafficReferrals, _, err := client.Repositories.ListTrafficReferrers(ctx, repo.Owner, repo.Repo)
+			if err != nil {
+				log.Fatalln("could not make the API request", err)
+			}
+			fmt.Println("TRAFFIC REFERRALS")
+			fmt.Println("///////////////////////////////////////")
+			for _, referral := range trafficReferrals {
+				fmt.Println("Referrer: ", *referral.Referrer)
+				fmt.Println("count: ", *referral.Count)
+				fmt.Println("Unique: ", *referral.Uniques)
+				referral := database.Referral{
+					Referrer:   *referral.Referrer,
+					Count:      *referral.Count,
+					Uniques:    *referral.Uniques,
+					Day:        time.Now().Truncate(24 * time.Hour),
+					Repository: repo.Repo,
+				}
+				db.Clauses(clause.OnConflict{
+					UpdateAll: true,
+				}).Create(&referral)
+			}
+
+			fmt.Println("///////////////////////////////////////")
 		}
-
-		fmt.Println("///////////////////////////////////////")
-
 		//sleep for 24 hours and then do it again
 		time.Sleep(24 * time.Hour)
 	}

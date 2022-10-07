@@ -13,8 +13,3 @@ echo 'chmod 777 terraform/start_script.sh' >> terraform/start_script.sh
 echo './tracker' >> terraform/start_script.sh
 
 
-
-
-
-sudo visudo
-replace line with + 
