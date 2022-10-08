@@ -1,32 +1,60 @@
 
 
-provider "google" {
-credentials = file("/Users/memi/Repository-Activity-Tracker-/first-vigil-296706-f83f2a2f26d0.json") //swap to your service Key!!!
-
-  project = "first-vigil-296706"
-  region  = "us-central1"
-  zone    = "us-central1-c"
+provider "kubernetes" {
+  config_path = "~/.kube/config"
 }
-
-resource "google_compute_instance" "vm_instance" {
-  name                      = "balancer-github-tracker"
-  machine_type              = "e2-micro"
-  allow_stopping_for_update = false
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-1804-lts"
+resource "kubernetes_namespace" "tracker" {
+  metadata {
+    name = "tracker"
+  }
+}
+resource "kubernetes_deployment" "tracker" {
+  metadata {
+    name      = "tracker"
+    namespace = kubernetes_namespace.tracker.metadata.0.name
+  }
+  spec {
+    replicas = 1
+    selector {
+      match_labels = {
+        app = "tracker"
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = "tracker"
+        }
+      }
+      spec {
+        container {
+          //INSERT YOUR PROJECT ID HERE <-----------------
+          image = "gcr.io/first-vigil-296706/tracker"
+          name  = "tracker"
+          port {
+            container_port = 80
+          }
+        }
+      }
     }
   }
-
-  network_interface {
-    network = "default"
-
-    access_config {
-      // Ephemeral public IP
+}
+resource "kubernetes_service" "tracker" {
+  metadata {
+    name      = "tracker"
+    namespace = kubernetes_namespace.tracker.metadata.0.name
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment.tracker.spec.0.template.0.metadata.0.labels.app
+    }
+    type = "NodePort"
+    port {
+      node_port   = 30201
+      port        = 80
+      target_port = 80
     }
   }
-  metadata_startup_script = "${file("start_script.sh")}"
 }
-
 
 

@@ -43,6 +43,10 @@ var (
 			Owner: "balancer-labs",
 			Repo:  "balancer-v2-monorepo",
 		},
+		{
+			Owner: "balancer-labs",
+			Repo:  "balancer-sdk",
+		},
 	}
 )
 
@@ -60,6 +64,7 @@ func main() {
 	githubPassword = dotenv.GetString("GITHUB_PASSWORD")
 	githubUsername = dotenv.GetString("GITHUB_USERNAME")
 	dsn = dotenv.GetString("DATABASE_URL")
+	rerun_time := dotenv.GetInt("RERUN_TIME")
 
 	//check if all the variables exist in the .env, if not panic and send an error message
 	if githubPassword == "" || githubUsername == "" || dsn == "" {
@@ -209,6 +214,6 @@ func main() {
 			fmt.Println("///////////////////////////////////////")
 		}
 		//sleep for 24 hours and then do it again
-		time.Sleep(24 * time.Hour)
+		time.Sleep(time.Duration(rerun_time) * time.Hour)
 	}
 }
